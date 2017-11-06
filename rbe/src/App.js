@@ -93,85 +93,31 @@ class App extends Component {
     }
   }
 
-  requestAuthor(key) {
-    var author = key;
-    return author;
-/*
-    $.ajax({
-      url: 'http://openlibrary.org' + key + '.json',
-      context: this,
-      dataType: 'json',
-      type: 'GET'
-    }).done(function (data) {
-      author = data.displayname;
-      console.log('done requestAuthor ' + author);
-      return (author);
-    });
-*/
-  }
-
-
-
-  mapOpenLibraryDataToChangeSet(data) {
-    var mythis = this;
-    var datos = data.map(function (change, index) {
-      var mychange = {
-        "when": jquery.timeago(change.timestamp),
-        "who": mythis.requestAuthor(change.author.key),
-        "description": change.comment
-      }
-      return mychange;
-    });
-    return datos;
-    
-  }
-
-
   fetchData() {
-    let changeSets = [];
-    $.ajax({
-      url: 'http://openlibrary.org/recentchanges.json?limit=10',
-      context: this,
-      dataType: 'json',
-      type: 'GET'
-    }).done(function (data) {
-      console.log("antes");
-      changeSets = this.mapOpenLibraryDataToChangeSet(data);
-      console.log("despues");
-      console.log(changeSets)
-      this.setState({changeSets: changeSets});
-    });
-  }
-
-  nestedAjax() {
+    var self = this;
 
     $.get('http://openlibrary.org/recentchanges.json?limit=10').then(function(events) {
-      console.log(events);
       var promises = $.map(events, function(change) {//$.map() loops through events.items and returns an array
-        console.log(change);
           return $.get('http://openlibrary.org'+change.author.key+'.json').then(function(authordata) {
             console.log(authordata);
             change.authorname = authordata.displayname;
             return change;
           });
       });
-
       
-      $.when.apply(null, promises).then(function() {
+      Promise.all(promises).then(function(results){
         let changeSets = [];
-        events.map(function(event) {
+        results.map(function(change) {
           changeSets.push(
             {
-              "when": jquery.timeago(event.timestamp),
-              "who": event.authorname,
-              "description": event.comment
+              "when": jquery.timeago(change.timestamp),
+              "who": change.authorname,
+              "description": change.comment
             }
           );
         })
-        console.log(changeSets);
-        return changeSets;
+        self.setState({changeSets: changeSets});
       });
-
   });
 };
 
@@ -181,8 +127,6 @@ class App extends Component {
   componentDidMount() {
     console.log("componentDidMount");
     this.fetchData();
-    this.nestedAjax();
-    console.log("end componentDidMount");
   }
 
   componentWillMount() {
